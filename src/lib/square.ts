@@ -168,3 +168,53 @@ export function verifyWebhookSignature(rawBody: string, signature: string | null
   if (a.length !== b.length) return false;
   return crypto.timingSafeEqual(a, b);
 }
+
+// ---------------------------------------------------------------------------
+// Diagnostics
+// ---------------------------------------------------------------------------
+
+export type ConnectionReport = {
+  ok: boolean;
+  httpStatus?: number;
+  errors?: { category?: string; code?: string; detail?: string }[];
+  locationCount?: number;
+  /** Whether SQUARE_LOCATION_ID is actually one of this account's locations. */
+  locationMatches?: boolean;
+};
+
+/**
+ * Asks Square who we are. Used by /api/square/health to tell apart the three
+ * ways this goes wrong — a token for the other environment, a location id
+ * from the other environment, and a bad API version — without anyone having
+ * to read server logs.
+ *
+ * Returns error codes and counts only, never the token or the account's
+ * location ids, because the endpoint that calls this is public.
+ */
+export async function describeConnection(): Promise<ConnectionReport> {
+  try {
+    const res = await fetch(`${squareBaseUrl()}/v2/locations`, {
+      headers: {
+        Authorization: `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
+        "Square-Version": SQUARE_VERSION,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const json: any = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      return { ok: false, httpStatus: res.status, errors: json?.errors ?? [] };
+    }
+
+    const ids: string[] = (json.locations ?? []).map((l: any) => l.id);
+    return {
+      ok: true,
+      httpStatus: res.status,
+      locationCount: ids.length,
+      locationMatches: ids.includes(process.env.SQUARE_LOCATION_ID ?? ""),
+    };
+  } catch (e: any) {
+    return { ok: false, errors: [{ detail: String(e?.message ?? e) }] };
+  }
+}
