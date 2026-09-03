@@ -1,0 +1,8 @@
+# Netlify build and function settings.
+#
+# The Next.js build itself is detected automatically — no build command or
+# publish directory is set here on purpose, so Netlify's Next.js runtime keeps
+# control of both.
+
+[functions]
+  directory = "netlify/functions"
