@@ -136,6 +136,24 @@ credentials when you're happy. No code changes are needed to go live.
 
 Card numbers never touch this website. Parents type them on Square's own page.
 
+### 7b. Checking the Square connection
+
+If checkout ever says "we couldn't open the payment page", open:
+
+```
+https://your-site/api/square/health
+```
+
+It reports which environment the site is pointed at, which variables are
+present, and what Square says when asked to list the account's locations.
+That separates the three things that actually go wrong: a token belonging to
+the other environment, a location id belonging to the other environment, and
+a stale pinned API version. It returns no secrets and cannot change anything,
+so it is safe to leave deployed.
+
+Note that sandbox and production have completely separate location ids — a
+real location id will never work with a sandbox token.
+
 ### 8. Switch on email
 
 1. Resend → **Domains** → add your domain and create the DNS records it asks
