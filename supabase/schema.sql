@@ -327,7 +327,10 @@ join schools s       on s.id = r.school_id
 join packages p      on p.id = r.package_id
 join school_years y  on y.id = o.school_year_id;
 
--- The kitchen's view: no parent contact details, no money.
+-- The kitchen's view: no parent contact details, no money, and PAID ONLY.
+-- An unpaid or abandoned registration must never reach the production sheet:
+-- that is what makes "nothing is baked before it is paid for" true rather
+-- than a promise someone has to remember to keep.
 create view bakery_orders with (security_invoker = on) as
 select
   o.id           as order_id,
@@ -349,4 +352,5 @@ join registrations r on r.id = o.registration_id
 join children c      on c.id = r.child_id
 join schools s       on s.id = r.school_id
 join packages p      on p.id = r.package_id
-where o.status <> 'cancelled';
+where o.status <> 'cancelled'
+  and o.payment_status = 'paid';

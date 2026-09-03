@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { suggestCelebrationDate } from "@/lib/dates";
-import { templates } from "@/lib/email/templates";
-import { sendEmail } from "@/lib/email/send";
+import { createPaymentLink, squareConfigured } from "@/lib/square";
 
 const str = (v: unknown, max = 200) =>
   typeof v === "string" ? v.trim().slice(0, max) : "";
@@ -15,7 +14,7 @@ const str = (v: unknown, max = 200) =>
 export async function POST(request: Request) {
   const supabase = createAdminClient();
   const body = await request.json();
-  const { parent, children, payment_plan } = body;
+  const { parent, children } = body;
 
   const email = str(parent?.email, 160).toLowerCase();
   const firstName = str(parent?.first_name, 80);
@@ -27,9 +26,6 @@ export async function POST(request: Request) {
   }
   if (!Array.isArray(children) || children.length === 0 || children.length > 12) {
     return NextResponse.json({ error: "Add at least one child." }, { status: 400 });
-  }
-  if (!["annual", "per_birthday"].includes(payment_plan)) {
-    return NextResponse.json({ error: "Choose how you'd like to pay." }, { status: 400 });
   }
 
   const { data: year } = await supabase
@@ -106,7 +102,7 @@ export async function POST(request: Request) {
         celebration_date: celebration.date,
         celebration_source: "auto",
         celebration_reason: celebration.reason,
-        payment_plan,
+        payment_plan: "annual",
       })
       .select("id")
       .single();
@@ -144,13 +140,60 @@ export async function POST(request: Request) {
     });
   }
 
-  // One confirmation email covering everyone they just registered.
-  await sendEmail({
-    to: email,
-    template: "registration_confirmation",
-    orderId: summaries[0]?.order_id,
-    ...templates.registration_confirmation(summaries, parentRow.pay_token, payment_plan),
-  });
+  // ---- payment ----
+  // Registration and payment are one step: the family goes straight to Square
+  // from here. The orders exist but stay unpaid, and the bakery never sees an
+  // unpaid order, so an abandoned checkout costs nobody a doughnut.
+  if (!squareConfigured()) {
+    return NextResponse.json(
+      { error: "Card payments aren't switched on yet. Please contact the school office." },
+      { status: 503 }
+    );
+  }
 
-  return NextResponse.json({ ok: true, count: summaries.length });
+  const site = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? new URL(request.url).origin;
+
+  let link;
+  try {
+    link = await createPaymentLink({
+      referenceId: parentRow.id,
+      buyerEmail: email,
+      redirectUrl: `${site}/register/done`,
+      paymentNote: `Birthday doughnuts — ${firstName} ${lastName}`,
+      lineItems: summaries.map((s) => ({
+        name: `${s.child_first_name} — ${s.package_name}`,
+        amountCents: s.amount_cents,
+        note: `${s.school_name} · Delivery ${s.delivery_date}`,
+      })),
+    });
+  } catch (e: any) {
+    console.error("Square createPaymentLink failed during registration:", e?.message);
+    return NextResponse.json(
+      { error: "We couldn't open the payment page. Nothing has been charged — please try again, or contact the school office." },
+      { status: 502 }
+    );
+  }
+
+  await supabase.from("payments").insert(
+    summaries.map((s) => ({
+      parent_id: parentRow.id,
+      school_year_id: year.id,
+      order_id: s.order_id,
+      plan: "annual",
+      amount_cents: s.amount_cents,
+      status: "pending",
+      square_order_id: link.orderId,
+      square_payment_link_id: link.paymentLinkId,
+    }))
+  );
+
+  await supabase
+    .from("orders")
+    .update({ payment_status: "pending" })
+    .in("id", summaries.map((s) => s.order_id));
+
+  // The confirmation email is sent by the Square webhook once the money has
+  // actually cleared, so a family that abandons checkout is never told they
+  // are registered.
+  return NextResponse.json({ url: link.url, count: summaries.length });
 }

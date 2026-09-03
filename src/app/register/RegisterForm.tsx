@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { suggestCelebrationDate, formatLong, money, type SchoolYear, type NoSchoolDate } from "@/lib/dates";
 
 type School = { id: string; name: string; short_name: string | null };
@@ -29,13 +28,11 @@ export default function RegisterForm({
   schools: School[]; pricing: Pricing | null; year: SchoolYear;
   noSchool: NoSchoolDate[];
 }) {
-  const router = useRouter();
   const [step, setStep] = useState(1);
   const [parent, setParent] = useState({
     first_name: "", last_name: "", email: "", phone: "",
   });
   const [children, setChildren] = useState<Child[]>([blankChild("", schools[0]?.id ?? "")]);
-  const [plan, setPlan] = useState<"annual" | "per_birthday">("per_birthday");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -63,15 +60,23 @@ export default function RegisterForm({
 
   async function submit() {
     setBusy(true); setError(null);
-    const res = await fetch("/api/registrations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ parent, children, payment_plan: plan }),
-    });
-    const json = await res.json();
-    setBusy(false);
-    if (!res.ok) { setError(json.error ?? "Something went wrong. Please try again."); return; }
-    router.push("/register/done");
+    try {
+      const res = await fetch("/api/registrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parent, children }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.url) {
+        throw new Error(json.error ?? "Something went wrong. Please try again.");
+      }
+      // Square's own checkout page. Stay busy so the button cannot be
+      // pressed twice while the browser is navigating away.
+      window.location.href = json.url;
+    } catch (e: any) {
+      setError(e.message);
+      setBusy(false);
+    }
   }
 
   const stepValid =
@@ -250,24 +255,6 @@ export default function RegisterForm({
       {step === 3 && (
         <div className="space-y-6">
           <div className="card p-6">
-            <h2 className="text-xl">How would you like to pay?</h2>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {[
-                { id: "annual" as const, title: "Pay for the year now", text: "One payment covers every birthday this school year." },
-                { id: "per_birthday" as const, title: "Pay before each birthday", text: "We email you a payment link about a week ahead." },
-              ].map((o) => (
-                <button key={o.id} type="button" onClick={() => setPlan(o.id)}
-                  className={`rounded-xl border p-4 text-left transition-colors ${
-                    plan === o.id ? "border-honey bg-honey/10" : "border-line bg-white hover:bg-paper"
-                  }`}>
-                  <span className="block font-semibold">{o.title}</span>
-                  <span className="mt-1 block text-sm text-muted">{o.text}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="card p-6">
             <h2 className="text-xl">Review</h2>
             <ul className="mt-4 divide-y divide-line">
               {children.map((c, i) => (
@@ -287,7 +274,9 @@ export default function RegisterForm({
               <span className="font-mono text-lg">{money(total)}</span>
             </div>
             <p className="mt-3 text-sm text-muted">
-              Final amounts can change slightly if the office adjusts a quantity.
+              You&rsquo;ll pay this now on Square&rsquo;s secure checkout page. Your card
+              details never touch this website. Nothing is confirmed with the bakery
+              until the payment goes through.
             </p>
           </div>
 
@@ -296,7 +285,7 @@ export default function RegisterForm({
           <div className="flex gap-3">
             <button className="btn-quiet" onClick={() => setStep(2)}>Back</button>
             <button className="btn-primary flex-1" disabled={busy} onClick={submit}>
-              {busy ? "Saving…" : "Finish registration"}
+              {busy ? "Opening secure checkout…" : `Pay ${money(total)} and finish`}
             </button>
           </div>
         </div>

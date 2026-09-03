@@ -1,8 +1,42 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { verifyWebhookSignature } from "@/lib/square";
+import { templates } from "@/lib/email/templates";
+import { sendEmail, alreadySent } from "@/lib/email/send";
 
 export const runtime = "nodejs";
+
+/**
+ * The receipt, sent only once the money has cleared. Registration no longer
+ * emails anything, so this is the first thing a family hears from us — and a
+ * family that abandoned checkout correctly hears nothing at all.
+ *
+ * A failure here is logged and swallowed: the payment is real whether or not
+ * the email sends, and returning an error would make Square retry the whole
+ * webhook and risk a duplicate.
+ */
+async function sendConfirmation(db: ReturnType<typeof createAdminClient>, orderIds: string[]) {
+  try {
+    if (await alreadySent("registration_confirmation", orderIds[0])) return;
+
+    const { data: rows } = await db
+      .from("admin_orders")
+      .select("order_id, child_first_name, school_name, grade, teacher_name, birthday, delivery_date, donut_count, package_name, amount_cents, parent_email, pay_token")
+      .in("order_id", orderIds)
+      .order("delivery_date");
+
+    if (!rows?.length || !rows[0].parent_email) return;
+
+    await sendEmail({
+      to: rows[0].parent_email,
+      template: "registration_confirmation",
+      orderId: orderIds[0],
+      ...templates.registration_confirmation(rows, rows[0].pay_token),
+    });
+  } catch (e: any) {
+    console.error("Confirmation email failed after payment:", e?.message);
+  }
+}
 
 /**
  * Square calls this after a payment settles. It is the only place an order is
@@ -59,6 +93,8 @@ export async function POST(request: Request) {
           .update({ payment_status: "paid" })
           .in("id", orderIds)
           .neq("payment_status", "refunded");
+
+        await sendConfirmation(db, orderIds);
       } else {
         // A payment we have no record of. Worth a log line: it usually means
         // someone took a payment in Square directly, outside this system.

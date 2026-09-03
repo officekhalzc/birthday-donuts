@@ -34,7 +34,11 @@ type OrderInfo = {
 };
 
 export const templates = {
-  registration_confirmation(rows: OrderInfo[], payToken: string, plan: "annual" | "per_birthday") {
+  /**
+   * Sent once payment has cleared, not when the form is submitted — registration
+   * and payment are the same step now, so this doubles as the receipt.
+   */
+  registration_confirmation(rows: OrderInfo[], payToken: string) {
     const total = rows.reduce((sum, r) => sum + (r.amount_cents ?? 0), 0);
     const list = rows
       .map(
@@ -52,17 +56,15 @@ export const templates = {
           : `${rows.length} children registered for birthday mini doughnuts`,
       html: shell(
         rows.length === 1 ? `${rows[0].child_first_name} is all set` : "You're all set",
-        `<p>Thank you for registering. Here is what the school has:</p>
+        `<p>Thank you — your payment has gone through and the birthdays below are
+         confirmed with the bakery.</p>
          ${list}
-         <p><strong>Total: ${money(total)}</strong></p>
-         <p>${
-           plan === "annual"
-             ? "You chose to pay for the year in one go. Use the button below whenever you're ready."
-             : "You chose to pay before each birthday. We'll email you a payment link about a week ahead."
-         }</p>
+         <p><strong>Paid in full: ${money(total)}</strong></p>
+         <p>We'll remind you about a week before each celebration. There is nothing
+         else for you to do.</p>
          <p>Keep this email — the button below is your private link, so you never
          need a password. If anything is wrong, reply to the school office.</p>`,
-        { label: "Pay or review", href: `${SITE}/pay/${payToken}` }
+        { label: "Review your orders", href: `${SITE}/pay/${payToken}` }
       ),
     };
   },
