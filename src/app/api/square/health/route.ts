@@ -15,8 +15,20 @@ export const dynamic = "force-dynamic";
  * Safe to leave in place: it returns no secrets, no location ids and no
  * customer data, and it cannot change anything.
  */
+/** Enough of a secret to identify it, never enough to use it. */
+function fingerprint(value: string | undefined) {
+  if (!value) return null;
+  return {
+    startsWith: value.slice(0, 4),
+    length: value.length,
+    hasSurroundingWhitespace: value !== value.trim(),
+  };
+}
+
 export async function GET() {
   const square = await describeConnection();
+  const token = process.env.SQUARE_ACCESS_TOKEN;
+  const tokenPrint = fingerprint(token);
 
   const hints: string[] = [];
 
@@ -27,6 +39,12 @@ export async function GET() {
   }
   if (!process.env.NEXT_PUBLIC_SITE_URL) {
     hints.push("NEXT_PUBLIC_SITE_URL is not set — webhook signatures cannot be verified and email links will be broken.");
+  }
+  if (tokenPrint?.hasSurroundingWhitespace) {
+    hints.push("SQUARE_ACCESS_TOKEN has a space or line break around it. Re-paste it with nothing extra.");
+  }
+  if (tokenPrint && tokenPrint.startsWith.toLowerCase() === "sq0i") {
+    hints.push("SQUARE_ACCESS_TOKEN looks like an Application ID (those start with sq0idp-), not an access token (those start with EAAA). They sit next to each other in the Developer Console.");
   }
   if (square.httpStatus === 401) {
     hints.push("Square rejected the token. Usually this means the token belongs to the other environment — a production token while SQUARE_ENVIRONMENT is sandbox, or the reverse.");
@@ -45,6 +63,9 @@ export async function GET() {
       NEXT_PUBLIC_SITE_URL: Boolean(process.env.NEXT_PUBLIC_SITE_URL),
       RESEND_API_KEY: Boolean(process.env.RESEND_API_KEY),
     },
+    deployedCommit: process.env.COMMIT_REF?.slice(0, 7) ?? "unknown",
+    accessToken: tokenPrint,
+    locationId: fingerprint(process.env.SQUARE_LOCATION_ID),
     expectedWebhookUrl: process.env.NEXT_PUBLIC_SITE_URL
       ? `${process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")}/api/square/webhook`
       : null,
