@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { SprinkleRule } from "@/components/SprinkleRule";
+import { OrderingWindowDialog } from "@/components/OrderingWindowDialog";
 
 const HALVES = [
   { stat: "Half", label: "the price", text: "A birthday treat that doesn't stretch the budget." },
   { stat: "Half", label: "the portion", text: "Sized for a child, so lunch still gets eaten." },
-  { stat: "Half", label: "the sugar", text: "Finished with dye-free sprinkles." },
+  { stat: "100%", label: "easier", text: "Delivered straight to the classroom. No shlep, nothing to remember." },
 ];
 
 const STEPS = [
@@ -27,6 +28,7 @@ export default function Home() {
   return (
     <>
       <Nav />
+      <OrderingWindowDialog />
 
       {/* Hero — the doughnut is the product, so it's shown properly rather than
           washed out. A large faded one appears further down as background. */}
@@ -35,19 +37,18 @@ export default function Home() {
           <div>
             <p className="eyebrow">A Nourish to Flourish program</p>
             <h1 className="mt-4 text-[2.6rem] leading-[1.05] md:text-[3.7rem]">
-              Just as fun.
-              <span className="block text-berry">Half the doughnut.</span>
+              Birthday Mini Doughnuts.
+              <span className="block text-berry">Made Easy!</span>
             </h1>
             <SprinkleRule width={300} className="mt-7" />
             <p className="mt-7 max-w-xl text-lg leading-relaxed text-muted">
-              Birthday doughnut celebrations are a lot of fun — but a regular doughnut is
-              expensive and a very large portion, and children are often left with little
-              appetite for lunch afterward.
+              The shlep and the cost of doughnuts brought to school is excessive, and
+              children are often left with little appetite for lunch afterward.
             </p>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
               Manna Bakehouse makes mini doughnuts with dye-free sprinkles, and delivers
-              them straight to school. Enter your child&rsquo;s birthday once and the rest
-              is taken care of.
+              them straight to school. Enter your child&rsquo;s birthday once, pay, and the
+              rest is taken care of.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
               <Link href="/register" className="btn-primary text-base">Register my child</Link>
@@ -83,10 +84,6 @@ export default function Home() {
               </div>
             ))}
           </dl>
-          <p className="mt-8 border-t border-line pt-6 leading-relaxed">
-            Compared with a regular doughnut — so birthday celebrations stay just as
-            fun, with a more balanced and affordable option.
-          </p>
         </div>
       </section>
 
@@ -100,11 +97,7 @@ export default function Home() {
                      rotate-12 opacity-[0.07] md:-right-16 md:w-[720px]"
         />
         <div className="relative mx-auto max-w-6xl px-5 py-16">
-          <p className="font-display text-xl leading-snug">
-            <span className="italic text-berry">&ldquo;My child didn&rsquo;t eat his lunch!&rdquo;</span>{" "}
-            Nourish to Flourish is here to help.
-          </p>
-          <h2 className="mt-10 text-2xl md:text-3xl">How it works</h2>
+          <h2 className="text-2xl md:text-3xl">How it works</h2>
           <SprinkleRule width={120} className="mt-4" />
           <ol className="mt-10 grid gap-8 md:grid-cols-3">
             {STEPS.map((s, i) => (
