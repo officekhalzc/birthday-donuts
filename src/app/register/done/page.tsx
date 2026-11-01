@@ -22,9 +22,7 @@ export default function RegistrationDone() {
           Have a great day!
         </p>
         <p className="mt-8 text-sm leading-relaxed text-muted">
-          Your child&rsquo;s celebration date is already booked with the school office.
-          To change a date, a quantity or a teacher&rsquo;s name, just reply to the
-          confirmation email or contact the office.
+          Your child&rsquo;s celebration date is booked.
         </p>
         <Link href="/" className="btn-quiet mt-8">Back to the homepage</Link>
       </main>
