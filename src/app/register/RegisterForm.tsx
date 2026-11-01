@@ -67,12 +67,17 @@ export default function RegisterForm({
         body: JSON.stringify({ parent, children }),
       });
       const json = await res.json();
-      if (!res.ok || !json.url) {
+      if (!res.ok) {
         throw new Error(json.error ?? "Something went wrong. Please try again.");
       }
-      // Square's own checkout page. Stay busy so the button cannot be
-      // pressed twice while the browser is navigating away.
-      window.location.href = json.url;
+      // A payment link follows by email, so there is nowhere to send the
+      // parent but the thank-you page. Stay busy through the navigation so
+      // the button cannot be pressed twice and double the order.
+      if (json.url) {
+        window.location.href = json.url;   // Square mode, if it is ever switched back on
+      } else {
+        window.location.href = "/register/done";
+      }
     } catch (e: any) {
       setError(e.message);
       setBusy(false);
@@ -89,7 +94,7 @@ export default function RegisterForm({
   return (
     <div className="mt-10">
       <ol className="mb-8 flex gap-2 text-xs font-semibold">
-        {["Your details", "Your children", "Payment"].map((label, i) => (
+        {["Your details", "Your children", "Review"].map((label, i) => (
           <li key={label}
             className={`flex-1 rounded-pill px-3 py-2 text-center ${
               step === i + 1 ? "bg-ink text-white" : step > i + 1 ? "bg-pistachiol text-pistachio" : "bg-white border border-line text-muted"
@@ -210,10 +215,6 @@ export default function RegisterForm({
                     <label className="label">How many mini doughnuts?</label>
                     <input type="number" min={1} max={80} className="field" value={c.quantity}
                       onChange={(e) => update(i, { quantity: Number(e.target.value) })} />
-                    <p className="mt-1.5 text-sm text-muted">
-                      Enough for the class, plus a few for the rebbe or morah. An estimate is
-                      fine &mdash; the office confirms the final count.
-                    </p>
                   </div>
                   <div className="self-start rounded-xl bg-paper px-4 py-3.5">
                     <p className="text-sm text-muted">Cost for this birthday</p>
@@ -221,17 +222,10 @@ export default function RegisterForm({
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="label">Allergy information</label>
-                    <input className="field" placeholder="Nut-free classroom" value={c.allergy_notes}
-                      onChange={(e) => update(i, { allergy_notes: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="label">Notes for the office</label>
-                    <input className="field" value={c.notes}
-                      onChange={(e) => update(i, { notes: e.target.value })} />
-                  </div>
+                <div className="mt-4">
+                  <label className="label">Allergy information</label>
+                  <input className="field" placeholder="Nut-free classroom" value={c.allergy_notes}
+                    onChange={(e) => update(i, { allergy_notes: e.target.value })} />
                 </div>
               </div>
             );
@@ -251,7 +245,7 @@ export default function RegisterForm({
         </div>
       )}
 
-      {/* ---------- Step 3: payment ---------- */}
+      {/* ---------- Step 3: review and place the order ---------- */}
       {step === 3 && (
         <div className="space-y-6">
           <div className="card p-6">
@@ -274,9 +268,8 @@ export default function RegisterForm({
               <span className="font-mono text-lg">{money(total)}</span>
             </div>
             <p className="mt-3 text-sm text-muted">
-              You&rsquo;ll pay this now on Square&rsquo;s secure checkout page. Your card
-              details never touch this website. Nothing is confirmed with the bakery
-              until the payment goes through.
+              Nothing to pay right now. We&rsquo;ll email you a payment link within the
+              next few days.
             </p>
           </div>
 
@@ -285,7 +278,7 @@ export default function RegisterForm({
           <div className="flex gap-3">
             <button className="btn-quiet" onClick={() => setStep(2)}>Back</button>
             <button className="btn-primary flex-1" disabled={busy} onClick={submit}>
-              {busy ? "Opening secure checkout…" : `Pay ${money(total)} and finish`}
+              {busy ? "Placing your order…" : "Place my order"}
             </button>
           </div>
         </div>

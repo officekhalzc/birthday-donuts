@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/server";
 import { SprinkleRule } from "@/components/SprinkleRule";
+import { OrderingWindowDialog } from "@/components/OrderingWindowDialog";
 import RegisterForm from "./RegisterForm";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +34,7 @@ export default async function RegisterPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-12">
+      <OrderingWindowDialog />
       <Link href="/" className="eyebrow">← Birthday Mini Doughnuts</Link>
       <h1 className="mt-4 text-3xl md:text-4xl">Register your child</h1>
       <SprinkleRule width={160} className="mt-4" />
