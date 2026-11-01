@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { suggestCelebrationDate } from "@/lib/dates";
 import { createPaymentLink, squareConfigured } from "@/lib/square";
+import { sendEmail } from "@/lib/email/send";
+import { templates } from "@/lib/email/templates";
 
 const str = (v: unknown, max = 200) =>
   typeof v === "string" ? v.trim().slice(0, max) : "";
@@ -141,9 +143,30 @@ export async function POST(request: Request) {
   }
 
   // ---- payment ----
-  // Registration and payment are one step: the family goes straight to Square
-  // from here. The orders exist but stay unpaid, and the bakery never sees an
-  // unpaid order, so an abandoned checkout costs nobody a doughnut.
+  // Default: take the order now and invoice later. The office sends a payment
+  // link by hand within a few days. Set PAYMENT_MODE=square to go back to
+  // charging at registration through Square's hosted checkout.
+  const chargeNow = process.env.PAYMENT_MODE === "square";
+
+  if (!chargeNow) {
+    await supabase
+      .from("orders")
+      .update({ payment_status: "unpaid" })
+      .in("id", summaries.map((s) => s.order_id));
+
+    // Square's webhook normally sends this, and there is no webhook now.
+    if (parentRow.pay_token) {
+      await sendEmail({
+        to: email,
+        template: "registration_confirmation",
+        orderId: summaries[0]?.order_id,
+        ...templates.registration_confirmation(summaries as any, parentRow.pay_token),
+      });
+    }
+
+    return NextResponse.json({ ok: true, invoiceLater: true, count: summaries.length });
+  }
+
   if (!squareConfigured()) {
     return NextResponse.json(
       { error: "Card payments aren't switched on yet. Please contact the school office." },
@@ -192,8 +215,5 @@ export async function POST(request: Request) {
     .update({ payment_status: "pending" })
     .in("id", summaries.map((s) => s.order_id));
 
-  // The confirmation email is sent by the Square webhook once the money has
-  // actually cleared, so a family that abandons checkout is never told they
-  // are registered.
   return NextResponse.json({ url: link.url, count: summaries.length });
 }
