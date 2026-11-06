@@ -10,6 +10,43 @@ import { ORDER_STATUS_LABEL, STATUS_COLOR, type AdminOrder, type OrderStatus } f
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DOW = ["S", "M", "T", "W", "T", "F", "S"];
 
+/**
+ * A family's personal payment page. The token is their only credential, so the
+ * link is theirs alone — it shows their orders, their total, and nothing else.
+ */
+function payUrl(token: string): string {
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  return `${origin}/pay/${token}`;
+}
+
+function CopyPayLink({
+  token, className, label = "Copy pay link",
+}: {
+  token: string;
+  className?: string;
+  label?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    const url = payUrl(token);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard access can be refused; show the link so it can be copied by hand.
+      window.prompt("Copy this payment link:", url);
+    }
+  }
+
+  return (
+    <button type="button" onClick={copy} className={className}>
+      {copied ? "Copied" : label}
+    </button>
+  );
+}
+
 export default function AdminClient({
   orders, packages, schools, schoolYearId,
 }: {
@@ -133,7 +170,11 @@ export default function AdminClient({
                   </td>
                   <td className="px-4 py-3"><StatusPill status={o.status} /></td>
                   <td className="px-4 py-3"><PaymentPill status={o.payment_status} /></td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
+                    {o.payment_status !== "paid" && o.status !== "cancelled" && o.pay_token && (
+                      <CopyPayLink token={o.pay_token} label="Copy pay link"
+                        className="mr-4 font-semibold text-pistachio hover:underline" />
+                    )}
                     <button className="font-semibold text-berry hover:underline" onClick={() => setEditing(o)}>Edit</button>
                   </td>
                 </tr>
@@ -348,6 +389,21 @@ function EditPanel({
             {order.parent_phone}
           </p>
           <p className="mt-3 font-mono">{money(order.amount_cents)} · {order.payment_plan === "annual" ? "Paying yearly" : "Paying per birthday"}</p>
+
+          {order.pay_token && (
+            <div className="mt-4 border-t border-line pt-4">
+              <p className="font-semibold">Payment link</p>
+              <p className="mt-1 text-muted">
+                Send this to the parent. It opens their own page with everything they
+                still owe, and a button to pay by card.
+              </p>
+              <p className="mt-2 break-all rounded-xl bg-paper px-3 py-2 font-mono text-xs">
+                {payUrl(order.pay_token)}
+              </p>
+              <CopyPayLink token={order.pay_token} label="Copy pay link"
+                className="btn-quiet mt-3 !py-2 text-sm" />
+            </div>
+          )}
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
