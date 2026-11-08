@@ -36,7 +36,13 @@ export default async function AdminPage() {
     { label: "Next 30 days", value: live.filter((o) => o.delivery_date >= today && o.delivery_date <= monthEnd).length },
     {
       label: "Unpaid",
-      value: money(live.filter((o) => o.payment_status === "unpaid").reduce((s, o) => s + o.amount_cents, 0)),
+      // Counts pending too: a parent who opened checkout and never finished
+      // still owes the money, and leaving it out understates what's outstanding.
+      value: money(
+        live
+          .filter((o) => o.payment_status === "unpaid" || o.payment_status === "pending")
+          .reduce((s, o) => s + o.amount_cents, 0)
+      ),
     },
   ];
 
