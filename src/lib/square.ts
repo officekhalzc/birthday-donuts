@@ -170,6 +170,38 @@ export function verifyWebhookSignature(rawBody: string, signature: string | null
 }
 
 // ---------------------------------------------------------------------------
+// Confirming a payment without the webhook
+// ---------------------------------------------------------------------------
+
+export type OrderPaymentState = {
+  paid: boolean;
+  paymentId?: string;
+  paidAt?: string;
+};
+
+/**
+ * Asks Square directly whether one of its orders has been paid.
+ *
+ * The webhook remains the primary path, but it is a single point of failure:
+ * a subscription that is disabled, pointed at the wrong URL, or signed with a
+ * key that no longer matches fails silently, and the parent is left looking at
+ * a Pay button for money they have already handed over. Square also redirects
+ * the browser back faster than it delivers the webhook, so even a healthy
+ * setup has a window where the page would be wrong.
+ */
+export async function getOrderPaymentState(squareOrderId: string): Promise<OrderPaymentState> {
+  const json = await squareFetch<any>(`/v2/orders/${squareOrderId}`, undefined, "GET");
+  const order = json?.order;
+  const tender = (order?.tenders ?? []).find((t: any) => t?.payment_id);
+
+  return {
+    paid: order?.state === "COMPLETED" || Boolean(tender?.payment_id),
+    paymentId: tender?.payment_id,
+    paidAt: order?.closed_at ?? order?.updated_at,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Diagnostics
 // ---------------------------------------------------------------------------
 
