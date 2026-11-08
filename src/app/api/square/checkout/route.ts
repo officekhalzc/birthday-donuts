@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     .from("admin_orders")
     .select("order_id, amount_cents, child_first_name, child_last_name, delivery_date, package_name, school_year_id, payment_plan, school_short_name, school_name")
     .eq("parent_id", parent.id)
-    .eq("payment_status", "unpaid")
+    .in("payment_status", ["unpaid", "pending"])
     .neq("status", "cancelled");
 
   if (!rows?.length) {
