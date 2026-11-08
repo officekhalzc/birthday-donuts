@@ -42,7 +42,13 @@ export default async function PayPage({
     .from("admin_orders").select("*").eq("parent_id", parent.id).order("delivery_date");
 
   const orders = (rows ?? []).filter((o) => o.status !== "cancelled");
-  const unpaid = orders.filter((o) => o.payment_status === "unpaid");
+  // "pending" only means a Square link was once generated for this order, not
+  // that money is on its way. A parent who opened checkout and changed their
+  // mind must still be able to pay, so pending counts as owing. Anything truly
+  // settled is marked "paid" by the Square webhook and drops out here.
+  const unpaid = orders.filter(
+    (o) => o.payment_status === "unpaid" || o.payment_status === "pending"
+  );
   const owed = unpaid.reduce((s, o) => s + o.amount_cents, 0);
 
   return (
