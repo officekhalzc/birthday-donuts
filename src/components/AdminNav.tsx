@@ -21,6 +21,7 @@ export async function AdminNav() {
           {isAdmin && (
             <>
               <Link href="/admin" className="rounded-pill px-3 py-2 hover:bg-white">Orders</Link>
+              <Link href="/admin/one-time" className="rounded-pill px-3 py-2 hover:bg-white">One-time order</Link>
               <Link href="/admin/school-year" className="rounded-pill px-3 py-2 hover:bg-white">School years</Link>
             </>
           )}
