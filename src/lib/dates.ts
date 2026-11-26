@@ -41,14 +41,16 @@ export function addDays(iso: string, n: number): string {
   return toISO(d);
 }
 
-/** 'Tuesday, September 15' */
-export function formatLong(iso: string): string {
+/** 'Tuesday, September 15'. Empty when the office didn't record a birthday. */
+export function formatLong(iso: string | null | undefined): string {
+  if (!iso) return "";
   const d = parseDate(iso);
   return `${WEEKDAY[d.getDay()]}, ${d.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`;
 }
 
-/** 'Sep 15, 2026' */
-export function formatShort(iso: string): string {
+/** 'Sep 15, 2026'. Empty when the office didn't record a birthday. */
+export function formatShort(iso: string | null | undefined): string {
+  if (!iso) return "";
   return parseDate(iso).toLocaleDateString("en-US", {
     month: "short", day: "numeric", year: "numeric",
   });

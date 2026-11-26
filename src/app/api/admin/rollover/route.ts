@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, getProfile } from "@/lib/supabase/server";
 import { suggestCelebrationDate } from "@/lib/dates";
+import { orderAmountCents } from "@/lib/one-time-order";
 
 /**
  * Starts a new school year and carries every family forward.
@@ -40,6 +41,12 @@ export async function POST(request: Request) {
     for (const r of previous ?? []) {
       const birthday = birthdays.get(r.child_id);
       if (!birthday) continue;
+      // A one-time office order is not an enrollment. Don't carry it into the
+      // next year — the date was typed for that celebration only.
+      if (
+        r.admin_notes === "One-time order" ||
+        r.celebration_reason === "One-time order entered by the school office"
+      ) continue;
 
       const celebration = suggestCelebrationDate(birthday, year, [], r.school_id);
       const { data: reg, error } = await supabase
@@ -67,7 +74,7 @@ export async function POST(request: Request) {
         school_year_id: year.id,
         delivery_date: celebration.date,
         donut_count: count,
-        amount_cents: pkg ? (pkg.per_item_cents > 0 ? pkg.per_item_cents * count : pkg.price_cents) : 0,
+        amount_cents: pkg ? orderAmountCents(pkg, count) : 0,
       });
       copied++;
     }

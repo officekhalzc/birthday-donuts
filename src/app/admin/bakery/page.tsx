@@ -3,6 +3,7 @@ import { AdminNav } from "@/components/AdminNav";
 import { SprinkleRule } from "@/components/SprinkleRule";
 import { createClient } from "@/lib/supabase/server";
 import { formatLong, toISO, addDays } from "@/lib/dates";
+import { classroomLine } from "@/lib/labels";
 import type { BakeryOrder } from "@/lib/types";
 import StatusControl from "./StatusControl";
 
@@ -67,7 +68,7 @@ export default async function BakeryPage() {
                           {o.child_first_name} {o.child_last_name}
                         </p>
                         <p className="text-sm text-muted">
-                          {o.school_short_name ?? o.school_name} · Grade {o.grade} · {o.teacher_name}
+                          {[o.school_short_name ?? o.school_name, classroomLine(o.grade, o.teacher_name)].filter(Boolean).join(" · ")}
                         </p>
                         <p className="mt-3 font-mono text-sm">
                           {o.donut_count} × {o.package_name}

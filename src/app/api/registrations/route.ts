@@ -4,6 +4,7 @@ import { suggestCelebrationDate } from "@/lib/dates";
 import { createPaymentLink, squareConfigured } from "@/lib/square";
 import { sendEmail } from "@/lib/email/send";
 import { templates } from "@/lib/email/templates";
+import { orderAmountCents } from "@/lib/one-time-order";
 
 const str = (v: unknown, max = 200) =>
   typeof v === "string" ? v.trim().slice(0, max) : "";
@@ -110,7 +111,7 @@ export async function POST(request: Request) {
       .single();
     if (regErr) return NextResponse.json({ error: regErr.message }, { status: 400 });
 
-    const amount = pkg.per_item_cents > 0 ? pkg.per_item_cents * quantity : pkg.price_cents;
+    const amount = orderAmountCents(pkg, quantity);
 
     const { data: order, error: orderErr } = await supabase
       .from("orders")

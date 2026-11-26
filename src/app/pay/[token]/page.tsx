@@ -2,6 +2,7 @@ import { Nav } from "@/components/Nav";
 import { SprinkleRule } from "@/components/SprinkleRule";
 import { createAdminClient } from "@/lib/supabase/server";
 import { formatLong, formatShort, money } from "@/lib/dates";
+import { classroomLine } from "@/lib/labels";
 import { getOrderPaymentState, squareConfigured } from "@/lib/square";
 import PayButton from "./PayButton";
 
@@ -159,7 +160,7 @@ export default async function PayPage({
                 <div>
                   <p className="font-display text-lg">{o.child_first_name} {o.child_last_name}</p>
                   <p className="text-sm text-muted">
-                    {o.school_name} · Grade {o.grade} · {o.teacher_name}
+                    {[o.school_name, classroomLine(o.grade, o.teacher_name)].filter(Boolean).join(" · ")}
                   </p>
                 </div>
                 <span className={`pill ${o.payment_status === "paid"
@@ -168,10 +169,12 @@ export default async function PayPage({
                 </span>
               </div>
               <dl className="mt-4 space-y-2 text-sm">
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted">Child&rsquo;s birthday</dt>
-                  <dd className="font-mono">{formatShort(o.birthday)}</dd>
-                </div>
+                {o.birthday && (
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted">Child&rsquo;s birthday</dt>
+                    <dd className="font-mono">{formatShort(o.birthday)}</dd>
+                  </div>
+                )}
                 <div className="flex justify-between gap-3">
                   <dt className="font-semibold">School celebration</dt>
                   <dd className="font-mono font-medium text-berry">{formatLong(o.delivery_date)}</dd>

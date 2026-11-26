@@ -54,7 +54,7 @@ export type AdminOrder = {
   child_id: string;
   child_first_name: string;
   child_last_name: string;
-  birthday: string;
+  birthday: string | null;
   allergy_notes: string | null;
   school_name: string;
   school_short_name: string | null;

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SprinkleRule } from "@/components/SprinkleRule";
 import PrintButton from "./PrintButton";
 import { formatLong, toISO } from "@/lib/dates";
+import { classroomLine } from "@/lib/labels";
 import type { BakeryOrder } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -59,7 +60,9 @@ export default async function ProductionSheet({
                 {list.map((o) => (
                   <article key={o.order_id} className="border-l-2 border-honey pl-4">
                     <p className="font-display text-lg">{o.child_first_name} {o.child_last_name}</p>
-                    <p className="text-sm text-muted">Grade {o.grade} — {o.teacher_name}</p>
+                    {classroomLine(o.grade, o.teacher_name, " — ") && (
+                      <p className="text-sm text-muted">{classroomLine(o.grade, o.teacher_name, " — ")}</p>
+                    )}
                     <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-mono text-sm">
                       <dt className="text-muted">Mini doughnuts</dt>
                       <dd className="font-medium">{o.donut_count}</dd>

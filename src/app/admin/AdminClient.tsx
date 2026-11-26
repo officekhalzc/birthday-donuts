@@ -2,50 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CopyPayLink, payUrl } from "@/components/CopyPayLink";
 import { StatusPill, PaymentPill } from "@/components/StatusPill";
 import { Sprinkle } from "@/components/SprinkleRule";
 import { formatLong, formatShort, monthGrid, money, parseDate, toISO } from "@/lib/dates";
+import { classroomLine } from "@/lib/labels";
 import { ORDER_STATUS_LABEL, STATUS_COLOR, type AdminOrder, type OrderStatus } from "@/lib/types";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DOW = ["S", "M", "T", "W", "T", "F", "S"];
-
-/**
- * A family's personal payment page. The token is their only credential, so the
- * link is theirs alone — it shows their orders, their total, and nothing else.
- */
-function payUrl(token: string): string {
-  const origin = typeof window === "undefined" ? "" : window.location.origin;
-  return `${origin}/pay/${token}`;
-}
-
-function CopyPayLink({
-  token, className, label = "Copy pay link",
-}: {
-  token: string;
-  className?: string;
-  label?: string;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  async function copy() {
-    const url = payUrl(token);
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard access can be refused; show the link so it can be copied by hand.
-      window.prompt("Copy this payment link:", url);
-    }
-  }
-
-  return (
-    <button type="button" onClick={copy} className={className}>
-      {copied ? "Copied" : label}
-    </button>
-  );
-}
 
 export default function AdminClient({
   orders, packages, schools, schoolYearId,
@@ -149,9 +114,13 @@ export default function AdminClient({
                   <td className="whitespace-nowrap px-4 py-3">
                     <span className="font-mono">{formatShort(o.delivery_date)}</span>
                     {o.celebration_source === "admin" && (
-                      <span className="ml-2 text-xs text-berry">set by office</span>
+                      <span className="ml-2 text-xs text-berry">
+                        {o.celebration_reason?.startsWith("One-time order") ? "one-time" : "set by office"}
+                      </span>
                     )}
-                    <div className="text-xs text-muted">b. {formatShort(o.birthday)}</div>
+                    {o.birthday && (
+                      <div className="text-xs text-muted">b. {formatShort(o.birthday)}</div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-semibold">{o.child_first_name} {o.child_last_name}</div>
@@ -159,7 +128,7 @@ export default function AdminClient({
                   </td>
                   <td className="px-4 py-3">
                     {o.school_short_name ?? o.school_name}
-                    <div className="text-xs text-muted">Grade {o.grade} · {o.teacher_name}</div>
+                    <div className="text-xs text-muted">{classroomLine(o.grade, o.teacher_name) || "—"}</div>
                   </td>
                   <td className="px-4 py-3 font-mono">{o.donut_count}</td>
                   <td className="px-4 py-3">{o.package_name}</td>
@@ -306,7 +275,7 @@ function EditPanel({
             <p className="eyebrow">{order.school_name}</p>
             <h2 className="mt-2 text-2xl">{order.child_first_name} {order.child_last_name}</h2>
             <p className="text-sm text-muted">
-              Birthday {formatLong(order.birthday)} · {order.package_name}
+              {order.birthday ? `Birthday ${formatLong(order.birthday)} · ` : ""}{order.package_name}
             </p>
           </div>
           <button onClick={onClose} className="btn-quiet !px-3 !py-1.5 text-sm">Close</button>

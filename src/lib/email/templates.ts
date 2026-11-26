@@ -26,12 +26,31 @@ type OrderInfo = {
   school_name: string;
   grade: string;
   teacher_name: string;
-  birthday: string;
+  birthday: string | null;
   delivery_date: string;
   donut_count: number;
   package_name: string;
   amount_cents?: number;
 };
+
+/** Drops blank grade or teacher. A fully filled class reads exactly as before. */
+function placeLine(school: string, grade: string, teacher: string): string {
+  return [school, grade, teacher].map((part) => part.trim()).filter(Boolean).join(" · ");
+}
+
+function whenLine(birthday: string | null, delivery: string): string {
+  const celebrated = `celebrated ${formatLong(delivery)}`;
+  if (!birthday) return `Celebrated ${formatLong(delivery)}`;
+  return `Birthday ${formatShort(birthday)} · ${celebrated}`;
+}
+
+/** "3 — Morah Cohen" when both are present, which is the existing email wording. */
+function classPhrase(grade: string, teacher: string): string {
+  const g = grade.trim();
+  const t = teacher.trim();
+  if (g && t) return `${g} — ${t}`;
+  return g || t;
+}
 
 export const templates = {
   /**
@@ -43,8 +62,8 @@ export const templates = {
     const list = rows
       .map(
         (r) => `<p style="margin:0 0 14px;"><strong>${r.child_first_name}</strong><br/>
-          Birthday ${formatShort(r.birthday)} · celebrated ${formatLong(r.delivery_date)}<br/>
-          ${r.school_name} · ${r.grade} · ${r.teacher_name}<br/>
+          ${whenLine(r.birthday, r.delivery_date)}<br/>
+          ${placeLine(r.school_name, r.grade, r.teacher_name)}<br/>
           ${r.donut_count} mini doughnuts${r.amount_cents ? ` · ${money(r.amount_cents)}` : ""}</p>`
       )
       .join("");
@@ -75,7 +94,7 @@ export const templates = {
       html: shell(
         `Coming up: ${formatLong(o.delivery_date)}`,
         `<p>${o.donut_count} ${o.package_name.toLowerCase()} will be delivered to
-         ${o.school_name} for ${o.grade} — ${o.teacher_name}.</p>
+         ${o.school_name}${classPhrase(o.grade, o.teacher_name) ? ` for ${classPhrase(o.grade, o.teacher_name)}` : ""}.</p>
          ${needsPayment
            ? `<p><strong>Payment is still needed</strong>${o.amount_cents ? ` — ${money(o.amount_cents)}` : ""}.
               Please pay before the delivery date so we can confirm the order with the bakery.</p>`
@@ -92,8 +111,9 @@ export const templates = {
       subject: `${o.child_first_name}'s birthday mini doughnuts were delivered`,
       html: shell(
         `Delivered — happy birthday, ${o.child_first_name}!`,
-        `<p>${o.donut_count} mini doughnuts arrived at ${o.school_name} this morning for
-         ${o.grade} — ${o.teacher_name}. We hope the class enjoyed them.</p>`
+        `<p>${o.donut_count} mini doughnuts arrived at ${o.school_name} this morning${
+          classPhrase(o.grade, o.teacher_name) ? ` for ${classPhrase(o.grade, o.teacher_name)}` : ""
+        }. We hope the class enjoyed them.</p>`
       ),
     };
   },

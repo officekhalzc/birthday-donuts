@@ -90,7 +90,7 @@ create table children (
   parent_id     uuid not null references parents(id) on delete cascade,
   first_name    text not null,
   last_name     text not null,
-  birthday      date not null,
+  birthday      date,                          -- optional; a one-time office order may not know it
   allergy_notes text,
   notes         text,
   created_at    timestamptz not null default now()
