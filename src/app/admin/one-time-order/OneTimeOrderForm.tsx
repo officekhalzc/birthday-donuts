@@ -121,7 +121,7 @@ export default function OneTimeOrderForm({
 
         <p className="text-sm text-muted">
           {created.confirmation_email === "sent" && (
-            <>A confirmation email went to {created.parent_email}. It is the same message a public registration sends, and it includes this link.</>
+            <>A confirmation email went to {created.parent_email}. It says payment is due and includes this link.</>
           )}
           {created.confirmation_email === "skipped" && (
             <>Email isn&rsquo;t configured here, so nothing was sent. Copy the link and send it to the family.</>

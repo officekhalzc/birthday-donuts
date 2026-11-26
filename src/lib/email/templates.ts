@@ -54,10 +54,14 @@ function classPhrase(grade: string, teacher: string): string {
 
 export const templates = {
   /**
-   * Sent once payment has cleared, not when the form is submitted — registration
-   * and payment are the same step now, so this doubles as the receipt.
+   * The note a family gets when an order is taken.
+   *
+   * `paid` follows the orders being described. Invoice-later registration and
+   * office one-time orders pass false. The Square webhook passes true only
+   * after the money has cleared. The two wordings must not be swapped: an
+   * unpaid family has to see what they owe and a link that pays it.
    */
-  registration_confirmation(rows: OrderInfo[], payToken: string) {
+  registration_confirmation(rows: OrderInfo[], payToken: string, paid: boolean) {
     const total = rows.reduce((sum, r) => sum + (r.amount_cents ?? 0), 0);
     const list = rows
       .map(
@@ -67,23 +71,45 @@ export const templates = {
           ${r.donut_count} mini doughnuts${r.amount_cents ? ` · ${money(r.amount_cents)}` : ""}</p>`
       )
       .join("");
+    const payHref = `${SITE}/pay/${payToken}`;
 
+    if (paid) {
+      return {
+        subject:
+          rows.length === 1
+            ? `${rows[0].child_first_name} is registered for birthday mini doughnuts`
+            : `${rows.length} children registered for birthday mini doughnuts`,
+        html: shell(
+          rows.length === 1 ? `${rows[0].child_first_name} is all set` : "You're all set",
+          `<p>Thank you — your payment has gone through and the birthdays below are
+           confirmed with the bakery.</p>
+           ${list}
+           <p><strong>Paid in full: ${money(total)}</strong></p>
+           <p>We'll remind you about a week before each celebration. There is nothing
+           else for you to do.</p>
+           <p>Keep this email — the button below is your private link, so you never
+           need a password. If anything is wrong, reply to the school office.</p>`,
+          { label: "Review your orders", href: payHref }
+        ),
+      };
+    }
+
+    const owed = money(total);
     return {
       subject:
         rows.length === 1
-          ? `${rows[0].child_first_name} is registered for birthday mini doughnuts`
-          : `${rows.length} children registered for birthday mini doughnuts`,
+          ? `Payment due for ${rows[0].child_first_name}'s birthday mini doughnuts`
+          : `Payment due for ${rows.length} birthday orders`,
       html: shell(
-        rows.length === 1 ? `${rows[0].child_first_name} is all set` : "You're all set",
-        `<p>Thank you — your payment has gone through and the birthdays below are
-         confirmed with the bakery.</p>
+        "Payment is due",
+        `<p>Thank you. The birthdays below are registered, and <strong>payment is due</strong>
+         before the bakery can confirm them.</p>
          ${list}
-         <p><strong>Paid in full: ${money(total)}</strong></p>
-         <p>We'll remind you about a week before each celebration. There is nothing
-         else for you to do.</p>
-         <p>Keep this email — the button below is your private link, so you never
-         need a password. If anything is wrong, reply to the school office.</p>`,
-        { label: "Review your orders", href: `${SITE}/pay/${payToken}` }
+         <p><strong>Payment due: ${owed}</strong></p>
+         <p>The button below is your private payment link, so you never need a password.
+         It shows everything this family still owes. We'll remind you about a week before
+         each celebration. If a date or a quantity is wrong, reply to the school office.</p>`,
+        { label: `Pay ${owed}`, href: payHref }
       ),
     };
   },

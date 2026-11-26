@@ -155,13 +155,15 @@ export async function POST(request: Request) {
       .update({ payment_status: "unpaid" })
       .in("id", summaries.map((s) => s.order_id));
 
-    // Square's webhook normally sends this, and there is no webhook now.
+    // These orders are unpaid. The email says so and links to the pay page.
+    // Charge-now registration does not email here; the webhook sends the paid
+    // receipt after Square confirms the money.
     if (parentRow.pay_token) {
       await sendEmail({
         to: email,
         template: "registration_confirmation",
         orderId: summaries[0]?.order_id,
-        ...templates.registration_confirmation(summaries as any, parentRow.pay_token),
+        ...templates.registration_confirmation(summaries as any, parentRow.pay_token, false),
       });
     }
 

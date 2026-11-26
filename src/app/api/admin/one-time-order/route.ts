@@ -200,9 +200,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: orderErr.message }, { status: 400 });
   }
 
-  // Invoice-later registration sends this same template as soon as the order
-  // exists. It is not the Square charge-now path, which waits for the webhook.
-  // The order stays unpaid either way — staff send the pay link themselves.
+  // Same unpaid confirmation public registration sends in invoice-later mode.
+  // The order stays unpaid; the email says payment is due and links here.
   let confirmationEmail: "sent" | "skipped" | "failed" = "failed";
   if (parentRow.pay_token) {
     const summary = {
@@ -220,7 +219,7 @@ export async function POST(request: Request) {
       to: email,
       template: "registration_confirmation",
       orderId: order.id,
-      ...templates.registration_confirmation([summary], parentRow.pay_token),
+      ...templates.registration_confirmation([summary], parentRow.pay_token, false),
     });
     confirmationEmail = result.ok ? ("skipped" in result && result.skipped ? "skipped" : "sent") : "failed";
   }

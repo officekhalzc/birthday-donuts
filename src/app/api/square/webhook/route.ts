@@ -7,9 +7,13 @@ import { sendEmail, alreadySent } from "@/lib/email/send";
 export const runtime = "nodejs";
 
 /**
- * The receipt, sent only once the money has cleared. Registration no longer
- * emails anything, so this is the first thing a family hears from us — and a
- * family that abandoned checkout correctly hears nothing at all.
+ * The paid receipt. Charge-now registration does not email when the form is
+ * submitted, so this is the first message a family gets, and only after Square
+ * says the payment completed. An abandoned checkout never reaches here.
+ *
+ * Invoice-later registration and one-time orders already sent this template
+ * with paid=false. alreadySent keeps that from being followed by a second
+ * email when the family later pays through the link.
  *
  * A failure here is logged and swallowed: the payment is real whether or not
  * the email sends, and returning an error would make Square retry the whole
@@ -21,17 +25,19 @@ async function sendConfirmation(db: ReturnType<typeof createAdminClient>, orderI
 
     const { data: rows } = await db
       .from("admin_orders")
-      .select("order_id, child_first_name, school_name, grade, teacher_name, birthday, delivery_date, donut_count, package_name, amount_cents, parent_email, pay_token")
+      .select("order_id, child_first_name, school_name, grade, teacher_name, birthday, delivery_date, donut_count, package_name, amount_cents, payment_status, parent_email, pay_token")
       .in("order_id", orderIds)
       .order("delivery_date");
 
     if (!rows?.length || !rows[0].parent_email) return;
 
+    const paid = rows.every((r) => r.payment_status === "paid");
+
     await sendEmail({
       to: rows[0].parent_email,
       template: "registration_confirmation",
       orderId: orderIds[0],
-      ...templates.registration_confirmation(rows, rows[0].pay_token),
+      ...templates.registration_confirmation(rows, rows[0].pay_token, paid),
     });
   } catch (e: any) {
     console.error("Confirmation email failed after payment:", e?.message);
